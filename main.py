@@ -10,7 +10,7 @@ import utility
 
 gravity_const = 9.8
 
-class InvertedPendulumn:
+class InvertedPendulum:
 
     def __init__(self,
                  Jb,
@@ -67,7 +67,7 @@ class InvertedPendulumn:
         self.xvec[3] = self.xvec[3] + self.dxvec[3] * self.sampling_time
 
 class Controller:
-    def __init__(self, dt, inverted_pendulumn):
+    def __init__(self, dt, inverted_pendulum):
         self.dt = dt
         #for pid
         self.error_integral = 0
@@ -92,9 +92,9 @@ class Controller:
  
     #disturbance observer
     def simple_dob(self, tau, dq, wc_dob):
-        self.tmp1_dob = tau + inverted_pendulumn.inertia * wc_dob * dq;
+        self.tmp1_dob = tau + inverted_pendulum.inertia * wc_dob * dq;
         self.tmp2_dob = (self.tmp2_dob + self.dt * wc_dob * self.tmp1_dob) / (1 + self.dt * wc_dob);
-        dist = self.tmp2_dob - inverted_pendulumn.inertia * wc_dob * dq; 
+        dist = self.tmp2_dob - inverted_pendulum.inertia * wc_dob * dq; 
 
         return dist
 
@@ -117,24 +117,19 @@ xvec1_data=[]
 xvec2_data=[]
 xvec3_data=[]
 
-xvec0_hat_data=[]
-xvec1_hat_data=[]
-xvec2_hat_data=[]
-xvec3_hat_data=[]
-
 theta_cmd_data=[]
 phi_cmd_data=[]
 
-# inverted_pendulumnulation object
-inverted_pendulumn = InvertedPendulumn(Jb, JB, mb, mB, rw, lb, sampling_time)
-phi_controller = Controller(control_sampling_time, inverted_pendulumn)
-theta_controller = Controller(control_sampling_time, inverted_pendulumn)
+# inverted_pendulum simulation object
+inverted_pendulum = InvertedPendulum(Jb, JB, mb, mB, rw, lb, sampling_time)
+phi_controller = Controller(control_sampling_time, inverted_pendulum)
+theta_controller = Controller(control_sampling_time, inverted_pendulum)
 
 # main loop 10[sec]
-for i in range(simulation_time*(int)(1/inverted_pendulumn.sampling_time)):
-    time = i * inverted_pendulumn.sampling_time
+for i in range(simulation_time*(int)(1/inverted_pendulum.sampling_time)):
+    time = i * inverted_pendulum.sampling_time
 
-    control_delay = (int)(controller.dt / inverted_pendulumn.sampling_time) #[sample]
+    control_delay = (int)(controller.dt / inverted_pendulum.sampling_time) #[sample]
     if i % control_delay == 0:
         """ controller """
         # definition for control parameters
@@ -148,25 +143,25 @@ for i in range(simulation_time*(int)(1/inverted_pendulumn.sampling_time)):
         kp_phi = 100.0
         kd_phi = 10.0
         phi_cmd = 0.0
-        phi_res = inverted_pendulumn.xvec[2]
+        phi_res = inverted_pendulum.xvec[2]
         phi_error = phi_cmd - phi_res
         phi_torque = -phi_controller.pid_controller(phi_error, kp_phi, 0, kd_phi, 500.0)        
         
         kp_theta = 50.0
         kd_theta = 10.0
         theta_cmd = 0.0
-        theta_res = inverted_pendulumn.xvec[0]
+        theta_res = inverted_pendulum.xvec[0]
         theta_error = theta_cmd - theta_res        
         theta_torque = theta_controller.pid_controller(theta_error, kp_theta, 0, kd_theta, 500.0)        
         theta_torque = 0.0 #        
         
-        inverted_pendulumn.torque = phi_torque + theta_torque
+        inverted_pendulum.torque = phi_torque + theta_torque
 
         #data update
-        xvec0_data.append(inverted_pendulumn.xvec[0])
-        xvec1_data.append(inverted_pendulumn.xvec[1])
-        xvec2_data.append(inverted_pendulumn.xvec[2])
-        xvec3_data.append(inverted_pendulumn.xvec[3])              
+        xvec0_data.append(inverted_pendulum.xvec[0])
+        xvec1_data.append(inverted_pendulum.xvec[1])
+        xvec2_data.append(inverted_pendulum.xvec[2])
+        xvec3_data.append(inverted_pendulum.xvec[3])              
         theta_cmd_data.append(theta_cmd)        
         phi_cmd_data.append(phi_cmd)
 
@@ -180,9 +175,9 @@ for i in range(simulation_time*(int)(1/inverted_pendulumn.sampling_time)):
         torque_reac = 0.0
 
     # derivative calculation
-    inverted_pendulumn.dxvec = inverted_pendulumn.calc_derivative(torque_reac)
+    inverted_pendulum.dxvec = inverted_pendulum.calc_derivative(torque_reac)
     # euler-integration
-    inverted_pendulumn.update()
+    inverted_pendulum.update()
 
     """ plant end """
 
