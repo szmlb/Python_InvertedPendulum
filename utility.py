@@ -13,7 +13,7 @@ def factorial (n):
 def discretizeAmat(Amat, dim_of_system, sampling_time, order_of_taylor):
     tmp2 = np.zeros((dim_of_system, dim_of_system))
     for i in range(order_of_taylor):
-       tmp1 = np.eye(np.size(Amat)/2)
+       tmp1 = np.eye(dim_of_system)
        for j in range(i):
            tmp1 = tmp1.dot(Amat)
        tmp2 = tmp2 + tmp1 * sampling_time**i / factorial(i)
