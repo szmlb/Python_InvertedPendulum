@@ -64,7 +64,6 @@ class InvertedPendulum:
         Gmat = np.array([[G1], [G2]])
         Umat = np.array([[self.torque-torque_reac], [0.0]])
         dq_vec = np.linalg.solve(Mmat, Umat- Dmat - Cmat - Gmat)
-        #print dq_vec[0][0]
 
         return (self.xvec[1], dq_vec[0][0], self.xvec[3], dq_vec[1][0])
 
@@ -93,15 +92,20 @@ class Controller:
         self.Cc = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
         self.Dc = 0.0        
         self.Uc = ctrl.ctrb(self.Ac, self.Bc)
+        self.U = ctrl.obsv(self.Ac, self.Cc)
                 
         #discretized system matrices
         self.Ad, self.Bd = utility.c2d(self.Ac, self.Bc, self.dt)
         self.Cd = self.Cc
         self.Dd = self.Dc
-        
+                
+        #pole placement
+        pole_des = np.array([-4, -4, -4, -4])
+        self.Kplace = ctrl.place(self.Ac, self.Bc, pole_des)
+
+        #LQR design
         self.Qlqr = 200.0 * np.eye(4)
-        #self.Qlqr = 100000.0 * np.eye(3)
-        
+        #self.Qlqr = 100000.0 * np.eye(3)        
         #self.Qlqr = np.array([[1.0, 0.0, 0.0, 0.0],[0.0, 1.0, 0.0, 0.0],[0.0, 0.0, 1000.0, 0.0],[0.0, 0.0, 0.0, 1000.0]])
         self.Rlqr = np.array([1.0])
         self.Klqr, Sricatti, Eigen = ctrl.lqr(self.Ac, self.Bc, self.Qlqr, self.Rlqr)
@@ -144,6 +148,16 @@ rw = 0.1
 lb = 0.5
 torque = 0.0
 
+# Controller parameters (for considering modelling error)
+Jbn=Jb
+JBn=JB
+Dbn=Db
+DBn=DB
+mbn = mb
+mBn = mB
+rwn = rw
+lbn = lb
+
 sampling_time = 0.001
 control_sampling_time=0.001
 simulation_time = 10
@@ -158,7 +172,7 @@ theta_cmd_data=[]
 phi_cmd_data=[]
 
 # inverted_pendulum simulation object
-inverted_pendulum = InvertedPendulum(Jb, JB, Db, DB, mb, mB, rw, lb, sampling_time)
+inverted_pendulum = InvertedPendulum(Jbn, JBn, Dbn, DBn, mbn, mBn, rwn, lbn, sampling_time)
 phi_controller = Controller(control_sampling_time, inverted_pendulum)
 theta_controller = Controller(control_sampling_time, inverted_pendulum)
 lqr_controller = Controller(control_sampling_time, inverted_pendulum)
@@ -196,10 +210,12 @@ for i in range(simulation_time*(int)(1/inverted_pendulum.sampling_time)):
         inverted_pendulum.torque = phi_torque + theta_torque
         """        
         
-        #LQR
-        inverted_pendulum.torque = lqr_controller.full_state_feedback(lqr_controller.Klqr)
-        #inverted_pendulum.torque = lqr_controller.Klqr[0, 0] * inverted_pendulum.xvec[0] + lqr_controller.Klqr[0, 1] * inverted_pendulum.xvec[2] + lqr_controller.Klqr[0, 2] * inverted_pendulum.xvec[3]
-
+        #Full state feedback control
+        theta_cmd = 0.0
+        phi_cmd = 0.0
+        #inverted_pendulum.torque = lqr_controller.full_state_feedback(lqr_controller.Klqr) #LQR
+        inverted_pendulum.torque = lqr_controller.full_state_feedback(lqr_controller.Kplace) #pole placement
+               
         #data update
         xvec0_data.append(inverted_pendulum.xvec[0])
         xvec1_data.append(inverted_pendulum.xvec[1])
@@ -213,7 +229,7 @@ for i in range(simulation_time*(int)(1/inverted_pendulum.sampling_time)):
     """ plant """
     #reaction torque
     if time == 8.0:
-        torque_reac = 100.0
+        torque_reac = 100.0 #impulsive disturbance
     else:
         torque_reac = 0.0
 
