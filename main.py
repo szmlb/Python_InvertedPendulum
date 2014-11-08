@@ -85,7 +85,6 @@ class Controller:
         #for DOB
         self.tmp1_dob = 0.0
         self.tmp2_dob = 0.0            
-
         #system matrices
         self.Ac = np.array([[0, 1, 0, 0], [0, -inverted_pendulum.Db * (1/inverted_pendulum.gamma+1/inverted_pendulum.alpha), -inverted_pendulum.delta / inverted_pendulum.gamma, inverted_pendulum.DB / inverted_pendulum.gamma], [0, 0, 0, 1], [0, inverted_pendulum.Db / inverted_pendulum.gamma, inverted_pendulum.delta / inverted_pendulum.gamma, inverted_pendulum.DB / inverted_pendulum.gamma]])
         self.Bc = np.array([[0], [1/inverted_pendulum.gamma + 1/inverted_pendulum.alpha], [0], [-1 / inverted_pendulum.gamma]])
@@ -93,17 +92,16 @@ class Controller:
         self.Dc = 0.0        
         self.Uc = ctrl.ctrb(self.Ac, self.Bc)
         self.U = ctrl.obsv(self.Ac, self.Cc)
-                
         #discretized system matrices
         self.Ad, self.Bd = utility.c2d(self.Ac, self.Bc, self.dt)
         self.Cd = self.Cc
         self.Dd = self.Dc
                 
-        #pole placement
-        pole_des = np.array([-4, -4, -4, -4])
+        ##feedback controller design
+        #pole placement feedback controller design
+        pole_des = np.array([-4, -4, -4, -4]) #duplicated pole
         self.Kplace = ctrl.place(self.Ac, self.Bc, pole_des)
-
-        #LQR design
+        #LQR feedback controller design
         self.Qlqr = 200.0 * np.eye(4)
         #self.Qlqr = 100000.0 * np.eye(3)        
         #self.Qlqr = np.array([[1.0, 0.0, 0.0, 0.0],[0.0, 1.0, 0.0, 0.0],[0.0, 0.0, 1000.0, 0.0],[0.0, 0.0, 0.0, 1000.0]])
@@ -111,6 +109,17 @@ class Controller:
         self.Klqr, Sricatti, Eigen = ctrl.lqr(self.Ac, self.Bc, self.Qlqr, self.Rlqr)
         #self.Kdlqr, Sdricatti, Edigen = ctrl.dlqr(self.Ad, self.Bd, self.Qlqr, self.Rlqr)
 
+        ##observer design
+        #pole placement
+        pole_des = np.array([-4, -4, -4, -4]) #duplicated pole
+        Kplace_tmp = ctrl.place(self.Ac.T, self.Cc.T, pole_des)
+        self.Hplace = Kplace_tmp.T
+        #LQR
+        self.Qlqr_obsv = 200.0 * np.eye(4)
+        self.Rlqr_obsv = np.eye(2)
+        Klqr_tmp, Sricatti_obsv, Eigen_obsv = ctrl.lqr(self.Ac.T, self.Cc.T, self.Qlqr_obsv, self.Rlqr_obsv)
+        self.Hlqr = Klqr_tmp.T
+       
     #classical PID controller            
     def pid_controller(self, error, Kp, Ki, Kd, wc_diff):
         self.error_diff = (self.error_diff_ + wc_diff * (error - self.error_)) / (1.0 + wc_diff * self.dt) 
